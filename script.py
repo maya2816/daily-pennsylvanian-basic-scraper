@@ -15,35 +15,39 @@ import loguru
 
 def scrape_data_point():
     """
-    Scrapes the top headline from the Academics section of The Daily Pennsylvanian.
-
-    Returns:
-        str: The headline text if found, otherwise an empty string.
+    Scrapes both the Academics section description paragraph AND the top article headline.
+    Returns a string that includes both.
     """
-
     headers = {
         "User-Agent": "cis3500-scraper"
     }
-    
-    # Request the "Academics" section of The Daily Pennsylvanian
     req = requests.get("https://www.thedp.com/section/academics", headers=headers)
     loguru.logger.info(f"Request URL: {req.url}")
     loguru.logger.info(f"Request status code: {req.status_code}")
-    
-    # Check if the request was successful
+
     if req.ok:
-        # Parse the HTML content of the page
         soup = bs4.BeautifulSoup(req.text, "html.parser")
         
-        # Find the top headline in the "Academics" section
-        target_element = soup.find("a", class_="article__headline")
+        # Try primary selector:
+        # Select the <p> immediately following the <h1 class="section-title">
+        desc_element = soup.select_one("h1.section-title + p")
+        if desc_element:
+            desc_text = desc_element.get_text(strip=True)
+        else:
+            # Fallback: try selecting a <p> that follows a container like "subsection-list"
+            desc_element = soup.select_one("div.subsection-list ~ p")
+            desc_text = desc_element.get_text(strip=True) if desc_element else ""
         
-        # Extract the headline text if found, otherwise return an empty string
-        data_point = "" if target_element is None else target_element.text.strip()
+        # Select the top article headline.
+        # This looks inside the first "section-article" for an <h3> with class "standard-link" and then the <a> inside it.
+        headline_element = soup.select_one("div.row.section-article h3.standard-link a")
+        headline_text = headline_element.get_text(strip=True) if headline_element else ""
+        
+        # Combine the description and headline into one string.
+        data_point = f"Section Description: {desc_text}\nHeadline: {headline_text}"
         loguru.logger.info(f"Data point: {data_point}")
         return data_point
     return ""
-
 
 
 if __name__ == "__main__":
