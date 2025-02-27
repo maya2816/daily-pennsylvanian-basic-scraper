@@ -2,8 +2,7 @@
 Scrapes a headline from The Daily Pennsylvanian website and saves it to a 
 JSON file that tracks headlines over time.
 """
-
-import json
+import json 
 import os
 import sys
 
@@ -15,34 +14,36 @@ import loguru
 
 
 def scrape_data_point():
+    """
+    Scrapes the top headline from the Academics section of The Daily Pennsylvanian.
+
+    Returns:
+        str: The headline text if found, otherwise an empty string.
+    """
+
     headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/88.0.4324.96 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.google.com/"
+        "User-Agent": "cis3500-scraper"
     }
-    req = requests.get("https://www.thedp.com", headers=headers)
+    
+    # Request the "Academics" section of The Daily Pennsylvanian
+    req = requests.get("https://www.thedp.com/section/academics", headers=headers)
     loguru.logger.info(f"Request URL: {req.url}")
     loguru.logger.info(f"Request status code: {req.status_code}")
-
+    
+    # Check if the request was successful
     if req.ok:
+        # Parse the HTML content of the page
         soup = bs4.BeautifulSoup(req.text, "html.parser")
-        # Modified rule: look for the 'Most Read' section
-        most_read_section = soup.find("ul", class_="most-read")
-        if most_read_section:
-            target_element = most_read_section.find("a")
-        else:
-            target_element = None
-
+        
+        # Find the top headline in the "Academics" section
+        target_element = soup.find("a", class_="article__headline")
+        
+        # Extract the headline text if found, otherwise return an empty string
         data_point = "" if target_element is None else target_element.text.strip()
         loguru.logger.info(f"Data point: {data_point}")
         return data_point
-    else:
-        loguru.logger.error("Request failed; returning empty string.")
-        return ""
+    return ""
+
 
 
 if __name__ == "__main__":
@@ -58,16 +59,11 @@ if __name__ == "__main__":
         loguru.logger.error(f"Failed to create data directory: {e}")
         sys.exit(1)
 
-    # Ensure the data file exists BEFORE loading the event monitor
-    data_file = "data/daily_pennsylvanian_headlines.json"
-    if not os.path.exists(data_file):
-        loguru.logger.info(f"Data file {data_file} not found. Creating an empty JSON file.")
-        with open(data_file, "w") as f:
-            json.dump({}, f)
-
     # Load daily event monitor
     loguru.logger.info("Loading daily event monitor")
-    dem = daily_event_monitor.DailyEventMonitor(data_file)
+    dem = daily_event_monitor.DailyEventMonitor(
+        "data/daily_pennsylvanian_headlines.json"
+    )
 
     # Run scrape
     loguru.logger.info("Starting scrape")
@@ -78,13 +74,12 @@ if __name__ == "__main__":
         data_point = None
 
     # Save data
-    if data_point is not None and data_point != "":
+    if data_point is not None:
         dem.add_today(data_point)
         dem.save()
         loguru.logger.info("Saved daily event monitor")
-    else:
-        loguru.logger.warning("No data scraped; nothing to save.")
-
+        
+    # Method to print tree of files/dirs
     def print_tree(directory, ignore_dirs=[".git", "__pycache__"]):
         loguru.logger.info(f"Printing tree of files/dirs at {directory}")
         for root, dirs, files in os.walk(directory):
@@ -96,9 +91,11 @@ if __name__ == "__main__":
             for file in files:
                 loguru.logger.info(f"{sub_indent}+--{file}")
 
+    # Print tree of files/dirs
     print_tree(os.getcwd())
 
-    loguru.logger.info(f"Printing contents of data file {dem.file_path}")
+    # Print contents of data file
+    loguru.logger.info("Printing contents of data file {}".format(dem.file_path))
     with open(dem.file_path, "r") as f:
         loguru.logger.info(f.read())
 
