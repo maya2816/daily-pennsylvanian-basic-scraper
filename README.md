@@ -15,3 +15,6 @@ This is a modified version of the original scraper.
 
 4. **Combine the Data**  
    The section description and the top headline are concatenated into a single string and saved to a JSON file. This allows us to track both pieces of information over time.
+
+## GitHub Actions Schedule
+I modified the schedule to run twice a day using the expression `0 8,20 * * *`, which triggers the workflow at both 8 AM and 8 PM UTC. This change helps us collect data more frequently, ensuring our scraper remains robust and up-to-date throughout the semester.
